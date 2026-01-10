@@ -26,6 +26,8 @@
   // Debounce / blokada
   let lastTriggeredAt = 0;
   let isAddingDeposit = false;
+  let hasAutoAddedDeposit = false;
+  let lastReminderAt = 0;
 
   const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
@@ -109,13 +111,18 @@ function injectDepositReminder() {
 // obserwuj SPA / renderowanie i wstrzykuj banner kiedy pojawi się footer
 const reminderObserver = new MutationObserver(() => {
   if ((location.hash || "").includes("/cart")) {
+    const now = Date.now();
+    if (now - lastReminderAt < 1000) return;
+    lastReminderAt = now;
     injectDepositReminder();
   }
 });
 reminderObserver.observe(document.body, { childList: true, subtree: true });
 
 // odpal też raz na start
-if ((location.hash || "").includes("/cart")) injectDepositReminder();
+if ((location.hash || "").includes("/cart")) {
+  injectDepositReminder();
+}
 
   function isCartPage() {
     return (location.hash || "").includes("/cart");
@@ -161,6 +168,76 @@ if ((location.hash || "").includes("/cart")) injectDepositReminder();
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  function waitForCartItemByName(name, timeoutMs = 5000) {
+    const normalized = String(name || "").trim().toLowerCase();
+    if (!normalized) return Promise.resolve(false);
+
+    const matches = () => {
+      const items = document.querySelectorAll('[data-testid^="cart_line_item_"] h4');
+      for (const item of items) {
+        const text = (item.innerText || "").trim().toLowerCase();
+        if (text.includes(normalized)) return true;
+      }
+      return false;
+    };
+
+    if (matches()) return Promise.resolve(true);
+
+    return new Promise((resolve) => {
+      const target = document.querySelector('.MultipleItemsCartContainer_SelectedItemsWrapper__3GDkJ') || document.body;
+      if (!target || !(target instanceof Node)) {
+        resolve(false);
+        return;
+      }
+
+      const observer = new MutationObserver(() => {
+        if (matches()) {
+          observer.disconnect();
+          clearTimeout(timeoutId);
+          resolve(true);
+        }
+      });
+
+      const timeoutId = setTimeout(() => {
+        observer.disconnect();
+        resolve(false);
+      }, timeoutMs);
+
+      observer.observe(target, { childList: true, subtree: true });
+    });
+  }
+
+  function waitForSearchResult(matchFn, timeoutMs = 5000) {
+    if (typeof matchFn !== "function") return Promise.resolve(false);
+
+    const matches = () => getResults().some(matchFn);
+
+    if (matches()) return Promise.resolve(true);
+
+    return new Promise((resolve) => {
+      const modal = getModal();
+      if (!modal || !(modal instanceof Node)) {
+        resolve(false);
+        return;
+      }
+
+      const observer = new MutationObserver(() => {
+        if (matches()) {
+          observer.disconnect();
+          clearTimeout(timeoutId);
+          resolve(true);
+        }
+      });
+
+      const timeoutId = setTimeout(() => {
+        observer.disconnect();
+        resolve(false);
+      }, timeoutMs);
+
+      observer.observe(modal, { childList: true, subtree: true });
+    });
+  }
+
   function openItemModal() {
     const btn = document.querySelector('[data-testid="select-item-button"]');
     if (!btn) {
@@ -181,7 +258,7 @@ if ((location.hash || "").includes("/cart")) injectDepositReminder();
   }
 
   async function addDeposit() {
-    if (isAddingDeposit) return;
+    if (isAddingDeposit || hasAutoAddedDeposit) return;
     isAddingDeposit = true;
 
     try {
@@ -205,7 +282,14 @@ if ((location.hash || "").includes("/cart")) injectDepositReminder();
       console.log("[GLOFOX] Szukam kaucji plastik...");
 
       setInputValue(input, DEPOSIT_QUERY);
-      await sleep(450); // troszkę więcej, bo renderuje listę
+      const hasResult = await waitForSearchResult((el) => {
+        const testid = el.getAttribute("data-testid") || "";
+        if (testid.includes(DEPOSIT_PRODUCT_ID)) return true;
+        return DEPOSIT_NAME_FALLBACK.test(getItemName(el));
+      }, 5000);
+      if (!hasResult) {
+        console.warn("[GLOFOX] Wyniki kaucji nie pojawily sie na czas, probuje z tym co jest.");
+      }
 
       const results = getResults();
       if (!results.length) {
@@ -232,6 +316,7 @@ if ((location.hash || "").includes("/cart")) injectDepositReminder();
       }
 
       (depositEl.querySelector('.itemInfo') || depositEl).click();
+      hasAutoAddedDeposit = true;
       console.log("[GLOFOX] Kaucja plastik dodana ✅");
 
     } finally {
@@ -255,6 +340,7 @@ if ((location.hash || "").includes("/cart")) injectDepositReminder();
 
     // jeśli produkt wymaga kaucji
     if (matchesAny(name, PRODUCTS_REQUIRING_DEPOSIT)) {
+      if (hasAutoAddedDeposit) return;
       const now = Date.now();
       if (now - lastTriggeredAt < 1200) return; // debounce
       lastTriggeredAt = now;
@@ -262,8 +348,10 @@ if ((location.hash || "").includes("/cart")) injectDepositReminder();
       console.log("[GLOFOX] Wybrano produkt z kaucją:", name);
       console.log("[GLOFOX] Czekam aż produkt doda się do koszyka...");
 
-      // Twoja propozycja - czas dla backendu/UI
-      await sleep(700);
+      const added = await waitForCartItemByName(name, 7000);
+      if (!added) {
+        console.warn("[GLOFOX] Produkt nie pojawil sie w koszyku na czas, probuje dodac kaucje mimo to.");
+      }
 
       await addDeposit();
     }
