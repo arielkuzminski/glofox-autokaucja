@@ -26,103 +26,9 @@
   // Debounce / blokada
   let lastTriggeredAt = 0;
   let isAddingDeposit = false;
-  let hasAutoAddedDeposit = false;
   let lastReminderAt = 0;
 
   const sleep = (ms) => new Promise(res => setTimeout(res, ms));
-
-// === UI: banner nad "Zapłać" z animacjami ===
-function injectDepositReminder() {
-  const actionsRow = document.querySelector(".CartActions_actions__20tTN");
-  if (!actionsRow) return;
-
-  // banner już istnieje?
-  if (document.querySelector('[data-testid="deposit-reminder-banner"]')) return;
-
-  // wstrzykujemy CSS tylko raz
-  if (!document.querySelector("#glofox-deposit-banner-styles")) {
-    const style = document.createElement("style");
-    style.id = "glofox-deposit-banner-styles";
-    style.textContent = `
-      @keyframes gfRotate360 {
-        0%   { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-
-      @keyframes gfPulse {
-        0%, 100% { transform: scale(1); filter: brightness(1); }
-        50%      { transform: scale(1.12); filter: brightness(1.25); }
-      }
-
-      .gf-emoji-rotate {
-        display: inline-block;
-        animation: gfRotate360 2.8s linear infinite;
-        will-change: transform;
-      }
-
-      .gf-emoji-pulse {
-        display: inline-block;
-        animation: gfPulse 1.4s ease-in-out infinite;
-        will-change: transform, filter;
-      }
-
-      [data-testid="deposit-reminder-banner"] {
-        width: 100%;
-        margin-bottom: 10px; /* klucz: oddech nad przyciskami */
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  const banner = document.createElement("div");
-  banner.setAttribute("data-testid", "deposit-reminder-banner");
-
-  banner.innerHTML = `
-    <div style="
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: rgba(255, 230, 0, 0.18);
-      border: 1px solid rgba(255, 230, 0, 0.45);
-      font-size: 14px;
-      line-height: 1.2;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      user-select: none;
-    ">
-      <div>
-        <strong>Ziomalko</strong>
-        <span class="gf-emoji-rotate">😎</span>
-        kaucja się zgadza?
-        <span class="gf-emoji-pulse">✅</span>
-        🧴
-      </div>
-      <div style="opacity: 0.65; font-size: 12px;">
-        (szybki check)
-      </div>
-    </div>
-  `;
-
-  // 👉 wstawiamy banner PRZED kontenerem przycisków
-  actionsRow.insertAdjacentElement("beforebegin", banner);
-}
-
-// obserwuj SPA / renderowanie i wstrzykuj banner kiedy pojawi się footer
-const reminderObserver = new MutationObserver(() => {
-  if ((location.hash || "").includes("/cart")) {
-    const now = Date.now();
-    if (now - lastReminderAt < 1000) return;
-    lastReminderAt = now;
-    injectDepositReminder();
-  }
-});
-reminderObserver.observe(document.body, { childList: true, subtree: true });
-
-// odpal też raz na start
-if ((location.hash || "").includes("/cart")) {
-  injectDepositReminder();
-}
 
   function isCartPage() {
     return (location.hash || "").includes("/cart");
@@ -151,6 +57,15 @@ if ((location.hash || "").includes("/cart")) {
 
   function getItemName(resultEl) {
     return (resultEl.querySelector('.itemName')?.innerText || '').trim();
+  }
+
+  function isDepositInCart() {
+    const items = document.querySelectorAll('[data-testid^="cart_line_item_"] h4');
+    for (const item of items) {
+      const text = (item.innerText || "").trim();
+      if (/kaucja/i.test(text)) return true;
+    }
+    return false;
   }
 
   function matchesAny(str, regexList) {
@@ -238,6 +153,130 @@ if ((location.hash || "").includes("/cart")) {
     });
   }
 
+  async function waitForModal(timeoutMs = 3000) {
+    const modal = getModal();
+    if (modal && modal.querySelector('input[placeholder="Nazwa artykułu"]')) {
+      return true;
+    }
+
+    return new Promise((resolve) => {
+      const target = modal || document.body;
+      if (!target || !(target instanceof Node)) {
+        resolve(false);
+        return;
+      }
+
+      const observer = new MutationObserver(() => {
+        const currentModal = getModal();
+        if (currentModal && currentModal.querySelector('input[placeholder="Nazwa artykułu"]')) {
+          observer.disconnect();
+          clearTimeout(timeoutId);
+          resolve(true);
+        }
+      });
+
+      const timeoutId = setTimeout(() => {
+        observer.disconnect();
+        resolve(false);
+      }, timeoutMs);
+
+      observer.observe(target, { childList: true, subtree: true });
+    });
+  }
+
+  // === UI: banner nad "Zapłać" z animacjami ===
+  function injectDepositReminder() {
+    const actionsRow = document.querySelector(".CartActions_actions__20tTN");
+    if (!actionsRow) return;
+
+    // banner już istnieje?
+    if (document.querySelector('[data-testid="deposit-reminder-banner"]')) return;
+
+    // wstrzykujemy CSS tylko raz
+    if (!document.querySelector("#glofox-deposit-banner-styles")) {
+      const style = document.createElement("style");
+      style.id = "glofox-deposit-banner-styles";
+      style.textContent = `
+      @keyframes gfRotate360 {
+        0%   { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      @keyframes gfPulse {
+        0%, 100% { transform: scale(1); filter: brightness(1); }
+        50%      { transform: scale(1.12); filter: brightness(1.25); }
+      }
+
+      .gf-emoji-rotate {
+        display: inline-block;
+        animation: gfRotate360 2.8s linear infinite;
+        will-change: transform;
+      }
+
+      .gf-emoji-pulse {
+        display: inline-block;
+        animation: gfPulse 1.4s ease-in-out infinite;
+        will-change: transform, filter;
+      }
+
+      [data-testid="deposit-reminder-banner"] {
+        width: 100%;
+        margin-bottom: 10px; /* klucz: oddech nad przyciskami */
+      }
+    `;
+      document.head.appendChild(style);
+    }
+
+    const banner = document.createElement("div");
+    banner.setAttribute("data-testid", "deposit-reminder-banner");
+
+    banner.innerHTML = `
+    <div style="
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 230, 0, 0.18);
+      border: 1px solid rgba(255, 230, 0, 0.45);
+      font-size: 14px;
+      line-height: 1.2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      user-select: none;
+    ">
+      <div>
+        <strong>Ziomalko</strong>
+        <span class="gf-emoji-rotate">😎</span>
+        kaucja się zgadza?
+        <span class="gf-emoji-pulse">✅</span>
+        🧴
+      </div>
+      <div style="opacity: 0.65; font-size: 12px;">
+        (szybki check)
+      </div>
+    </div>
+  `;
+
+    // 👉 wstawiamy banner PRZED kontenerem przycisków
+    actionsRow.insertAdjacentElement("beforebegin", banner);
+  }
+
+  // obserwuj SPA / renderowanie i wstrzykuj banner kiedy pojawi się footer
+  const reminderObserver = new MutationObserver(() => {
+    if ((location.hash || "").includes("/cart")) {
+      const now = Date.now();
+      if (now - lastReminderAt < 1000) return;
+      lastReminderAt = now;
+      injectDepositReminder();
+    }
+  });
+  reminderObserver.observe(document.body, { childList: true, subtree: true });
+
+  // odpal też raz na start
+  if ((location.hash || "").includes("/cart")) {
+    injectDepositReminder();
+  }
+
   function openItemModal() {
     const btn = document.querySelector('[data-testid="select-item-button"]');
     if (!btn) {
@@ -248,17 +287,8 @@ if ((location.hash || "").includes("/cart")) {
     return true;
   }
 
-  async function waitForModal(timeoutMs = 3000) {
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-      if (isSelectItemModalOpen()) return true;
-      await sleep(100);
-    }
-    return false;
-  }
-
   async function addDeposit() {
-    if (isAddingDeposit || hasAutoAddedDeposit) return;
+    if (isAddingDeposit || isDepositInCart()) return;
     isAddingDeposit = true;
 
     try {
@@ -316,7 +346,6 @@ if ((location.hash || "").includes("/cart")) {
       }
 
       (depositEl.querySelector('.itemInfo') || depositEl).click();
-      hasAutoAddedDeposit = true;
       console.log("[GLOFOX] Kaucja plastik dodana ✅");
 
     } finally {
@@ -340,7 +369,7 @@ if ((location.hash || "").includes("/cart")) {
 
     // jeśli produkt wymaga kaucji
     if (matchesAny(name, PRODUCTS_REQUIRING_DEPOSIT)) {
-      if (hasAutoAddedDeposit) return;
+      if (isDepositInCart()) return;
       const now = Date.now();
       if (now - lastTriggeredAt < 1200) return; // debounce
       lastTriggeredAt = now;
