@@ -1,64 +1,77 @@
 // ==UserScript==
 // @name         Glofox Cart - Auto Kaucja Plastik (Stable)
-// @namespace    ariel-glofox
+// @namespace    glofox
 // @version      1.0
 // @description  Po dodaniu produktu z kaucją (np. woda) otwiera modal i dodaje Kaucja plastik.
 // @match        https://app.glofox.com/*
 // @run-at       document-idle
 // @grant        none
+// @author       Ariel Kuźmiński (ariel.kuzminski@gmail.com)
+// @github       https://github.com/arielkuzminski/glofox-autokaucja
 // ==/UserScript==
 
 (function () {
   'use strict';
 
-  // === KONFIG ===
-  const PRODUCTS_REQUIRING_DEPOSIT = [
-    /woda/i,
-    // możesz dopisać kolejne:
-    // /izotonik/i,
-    // /napój/i
+  /**
+   * Konfiguracja:
+   * - PRODUCTS_REQUIRING_DEPOSIT_CODES: lista kodów kreskowych produktów z kaucją.
+   * - DEPOSIT_*: identyfikacja produktu kaucji w wyszukiwarce.
+   */
+  const PRODUCTS_REQUIRING_DEPOSIT_CODES = [
+    "5000112679519",
+    "5000112680195",
+    "5000112679540"
   ];
 
   const DEPOSIT_PRODUCT_ID = "691f424189fc5b95160404b7"; // kaucja plastik
   const DEPOSIT_QUERY = "kaucja";
   const DEPOSIT_NAME_FALLBACK = /kaucja plastik/i;
 
-  // Debounce / blokada
+  /** Debounce i blokada operacji. */
   let lastTriggeredAt = 0;
   let isAddingDeposit = false;
   let lastReminderAt = 0;
 
+  /** @param {number} ms */
   const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
+  /** @returns {boolean} */
   function isCartPage() {
     return (location.hash || "").includes("/cart");
   }
 
+  /** @returns {Element|null} */
   function getModal() {
     return document.querySelector('[data-testid="modal-content"]');
   }
 
+  /** @returns {boolean} */
   function isSelectItemModalOpen() {
     const modal = getModal();
     return modal && modal.innerText.includes("Wybierz artykuł");
   }
 
+  /** @returns {HTMLInputElement|null} */
   function getSearchInput() {
     const modal = getModal();
     if (!modal) return null;
     return modal.querySelector('input[placeholder="Nazwa artykułu"]');
   }
 
+  /** @returns {Element[]} */
   function getResults() {
     const modal = getModal();
     if (!modal) return [];
     return [...modal.querySelectorAll('.searchResult')];
   }
 
+  /** @param {Element} resultEl @returns {string} */
   function getItemName(resultEl) {
     return (resultEl.querySelector('.itemName')?.innerText || '').trim();
   }
 
+  /** @returns {boolean} */
   function isDepositInCart() {
     const items = document.querySelectorAll('[data-testid^="cart_line_item_"] h4');
     for (const item of items) {
@@ -68,10 +81,21 @@
     return false;
   }
 
-  function matchesAny(str, regexList) {
-    return regexList.some(rx => rx.test(str));
+  /**
+   * Sprawdza, czy nazwa zawiera któryś z kodów.
+   * @param {string} str
+   * @param {string[]} codes
+   * @returns {boolean}
+   */
+  function matchesAnyCode(str, codes) {
+    return codes.some(code => str.includes(code));
   }
 
+  /**
+   * Ustawia wartość inputa tak, by UI wykryło zmianę.
+   * @param {HTMLInputElement} input
+   * @param {string} value
+   */
   function setInputValue(input, value) {
     input.focus();
     const nativeSetter = Object.getOwnPropertyDescriptor(
@@ -83,6 +107,12 @@
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  /**
+   * Czeka aż pozycja z nazwą pojawi się w koszyku.
+   * @param {string} name
+   * @param {number} timeoutMs
+   * @returns {Promise<boolean>}
+   */
   function waitForCartItemByName(name, timeoutMs = 5000) {
     const normalized = String(name || "").trim().toLowerCase();
     if (!normalized) return Promise.resolve(false);
@@ -122,6 +152,12 @@
     });
   }
 
+  /**
+   * Czeka aż w wynikach pojawi się element spełniający warunek.
+   * @param {(el: Element) => boolean} matchFn
+   * @param {number} timeoutMs
+   * @returns {Promise<boolean>}
+   */
   function waitForSearchResult(matchFn, timeoutMs = 5000) {
     if (typeof matchFn !== "function") return Promise.resolve(false);
 
@@ -153,6 +189,11 @@
     });
   }
 
+  /**
+   * Czeka aż modal wyboru artykułu będzie gotowy (input wyszukiwania).
+   * @param {number} timeoutMs
+   * @returns {Promise<boolean>}
+   */
   async function waitForModal(timeoutMs = 3000) {
     const modal = getModal();
     if (modal && modal.querySelector('input[placeholder="Nazwa artykułu"]')) {
@@ -184,7 +225,10 @@
     });
   }
 
-  // === UI: banner nad "Zapłać" z animacjami ===
+  /**
+   * Wstrzykuje banner informacyjny nad przyciskami akcji w koszyku.
+   * @returns {void}
+   */
   function injectDepositReminder() {
     const actionsRow = document.querySelector(".CartActions_actions__20tTN");
     if (!actionsRow) return;
@@ -261,7 +305,7 @@
     actionsRow.insertAdjacentElement("beforebegin", banner);
   }
 
-  // obserwuj SPA / renderowanie i wstrzykuj banner kiedy pojawi się footer
+  /** Obserwuj SPA / renderowanie i wstrzykuj banner kiedy pojawi się footer. */
   const reminderObserver = new MutationObserver(() => {
     if ((location.hash || "").includes("/cart")) {
       const now = Date.now();
@@ -272,11 +316,12 @@
   });
   reminderObserver.observe(document.body, { childList: true, subtree: true });
 
-  // odpal też raz na start
+  /** Odpal też raz na start. */
   if ((location.hash || "").includes("/cart")) {
     injectDepositReminder();
   }
 
+  /** @returns {boolean} */
   function openItemModal() {
     const btn = document.querySelector('[data-testid="select-item-button"]');
     if (!btn) {
@@ -287,6 +332,10 @@
     return true;
   }
 
+  /**
+   * Otwiera modal i dodaje kaucję, jeśli nie ma jej w koszyku.
+   * @returns {Promise<void>}
+   */
   async function addDeposit() {
     if (isAddingDeposit || isDepositInCart()) return;
     isAddingDeposit = true;
@@ -353,7 +402,7 @@
     }
   }
 
-  // === Trigger: kliknięcie produktu w modalu (np. woda) ===
+  /** Trigger: kliknięcie produktu w modalu (np. woda). */
   document.addEventListener('click', async (e) => {
     if (!isCartPage()) return;
 
@@ -368,7 +417,7 @@
     if (/kaucja/i.test(name)) return;
 
     // jeśli produkt wymaga kaucji
-    if (matchesAny(name, PRODUCTS_REQUIRING_DEPOSIT)) {
+    if (matchesAnyCode(name, PRODUCTS_REQUIRING_DEPOSIT_CODES)) {
       if (isDepositInCart()) return;
       const now = Date.now();
       if (now - lastTriggeredAt < 1200) return; // debounce

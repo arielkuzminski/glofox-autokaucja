@@ -1,6 +1,6 @@
 # Glofox Auto Kaucja Plastik
 
-Skrypt Tampermonkey dla Glofox, który automatycznie dodaje kaucję plastikową po wybraniu produktów wymagających kaucji (np. woda) w koszyku.
+Skrypt Tampermonkey dla Glofox, który automatycznie dodaje kaucję plastikową po wybraniu produktów wymagających kaucji w koszyku.
 
 ## Wymagania
 
@@ -26,22 +26,39 @@ Skrypt Tampermonkey dla Glofox, który automatycznie dodaje kaucję plastikową 
 
 1. Zaloguj się do `https://app.glofox.com/`.
 2. Przejdź do koszyka.
-3. Dodaj produkt wymagający kaucji (np. woda) z listy artykułów.
+3. Dodaj produkt wymagający kaucji z listy artykułów.
 4. Skrypt automatycznie otworzy modal, wyszuka "kaucja" i doda kaucję plastikową.
 
 ## Konfiguracja
 
 W pliku skryptu możesz dostosować:
 
-- `PRODUCTS_REQUIRING_DEPOSIT` – lista wyrażeń regularnych dla produktów z kaucją.
+- `PRODUCTS_REQUIRING_DEPOSIT_CODES` – lista kodów kreskowych produktów wymagających kaucji.
 - `DEPOSIT_PRODUCT_ID` – ID produktu kaucji.
 - `DEPOSIT_QUERY` – fraza wyszukiwania kaucji.
 - `DEPOSIT_NAME_FALLBACK` – fallback po nazwie, gdy ID się zmieni.
+
+## Lista zmiennych konfigurowalnych
+
+- `PRODUCTS_REQUIRING_DEPOSIT_CODES` – tablica kodów kreskowych (np. `"5000112680195"`).
+- `DEPOSIT_PRODUCT_ID` – stałe ID produktu kaucji.
+- `DEPOSIT_QUERY` – tekst wpisywany w wyszukiwarkę modala.
+- `DEPOSIT_NAME_FALLBACK` – regex nazwy kaucji używany, gdy ID się zmieni.
+
+## Przykład konfiguracji
+
+```js
+const PRODUCTS_REQUIRING_DEPOSIT_CODES = [
+  "5000112679519",
+  "5000112680195",
+  "5000112679540"
+];
+```
 
 ## Rozwiązywanie problemów
 
 - Jeśli kaucja się nie dodaje, upewnij się, że:
   - Skrypt jest włączony w Tampermonkey.
   - Jesteś na stronie koszyka w Glofox.
-  - Nazwy produktów pasują do `PRODUCTS_REQUIRING_DEPOSIT`.
+  - Kody produktów znajdują się w `PRODUCTS_REQUIRING_DEPOSIT_CODES`.
 - W przypadku zmian w interfejsie Glofox może być potrzebna aktualizacja selektorów w skrypcie.
