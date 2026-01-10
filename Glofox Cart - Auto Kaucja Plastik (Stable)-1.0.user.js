@@ -287,6 +287,7 @@
       justify-content: space-between;
       gap: 12px;
       user-select: none;
+      margin-top: -50px;
     ">
       <div>
         <strong>Ziomalko</strong>
