@@ -276,28 +276,27 @@
 
     banner.innerHTML = `
     <div style="
-      padding: 10px 12px;
+      padding: 7px 10px;
       border-radius: 12px;
       background: rgba(255, 230, 0, 0.18);
       border: 1px solid rgba(255, 230, 0, 0.45);
-      font-size: 14px;
-      line-height: 1.2;
+      font-size: 10px;
+      line-height: 0.4;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 0;
       user-select: none;
-      margin-top: -50px;
+      margin-top: -25px;
     ">
       <div>
         <strong>Ziomalko</strong>
         <span class="gf-emoji-rotate">😎</span>
-        kaucja się zgadza?
-        <span class="gf-emoji-pulse">✅</span>
         🧴
       </div>
-      <div style="opacity: 0.65; font-size: 12px;">
-        (szybki check)
+      <div>
+              kaucja się zgadza?
+        <span class="gf-emoji-pulse">✅</span>
       </div>
     </div>
   `;
