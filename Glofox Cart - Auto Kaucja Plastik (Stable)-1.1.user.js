@@ -8,6 +8,8 @@
 // @grant        none
 // @author       Ariel Kuźmiński (ariel.kuzminski@gmail.com)
 // @github       https://github.com/arielkuzminski/glofox-autokaucja
+// @updateURL    https://raw.githubusercontent.com/arielkuzminski/glofox-autokaucja/master/Glofox%20Cart%20-%20Auto%20Kaucja%20Plastik%20(Stable)-1.1.user.js
+// @downloadURL  https://raw.githubusercontent.com/arielkuzminski/glofox-autokaucja/master/Glofox%20Cart%20-%20Auto%20Kaucja%20Plastik%20(Stable)-1.1.user.js
 // ==/UserScript==
 
 (function () {

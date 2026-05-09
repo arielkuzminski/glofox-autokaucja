@@ -1,0 +1,19 @@
+name: Validate Userscripts
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check metadata
+        run: |
+          failed=0
+          for f in $(find . -name "*.user.js"); do
+            echo "Checking: $f"
+            grep -q "@version"     "$f" || { echo "MISSING @version in $f";     failed=1; }
+            grep -q "@updateURL"   "$f" || { echo "MISSING @updateURL in $f";   failed=1; }
+            grep -q "@downloadURL" "$f" || { echo "MISSING @downloadURL in $f"; failed=1; }
+            grep -q "raw.githubusercontent.com" "$f" || { echo "WRONG URL format in $f"; failed=1; }
+            grep -q "github.com/blob/" "$f" && { echo "INVALID blob URL in $f"; failed=1; }
+          done
+          exit $failed

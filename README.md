@@ -15,12 +15,26 @@ Skrypt Tampermonkey dla Glofox, który automatycznie dodaje kaucję plastikową 
 
 ## Instalacja skryptu
 
-1. W Tampermonkey kliknij "Create a new script".
-2. Usuń domyślną zawartość edytora.
-3. Wklej zawartość pliku:
-   - `Glofox Cart - Auto Kaucja Plastik (Stable)-1.4.user.js`
-4. Zapisz skrypt (Ctrl+S).
-5. Upewnij się, że skrypt jest włączony na liście Tampermonkey.
+Kliknij link — Tampermonkey automatycznie zaproponuje instalację:
+
+| Wersja | Link |
+|--------|------|
+| v1.5 (aktualna) | [Zainstaluj](https://raw.githubusercontent.com/arielkuzminski/glofox-autokaucja/master/Glofox%20Cart%20-%20Auto%20Kaucja%20Plastik%20(Stable)-1.5.user.js) |
+| v1.4 | [Zainstaluj](https://raw.githubusercontent.com/arielkuzminski/glofox-autokaucja/master/Glofox%20Cart%20-%20Auto%20Kaucja%20Plastik%20(Stable)-1.4.user.js) |
+| v1.3 | [Zainstaluj](https://raw.githubusercontent.com/arielkuzminski/glofox-autokaucja/master/Glofox%20Cart%20-%20Auto%20Kaucja%20Plastik%20(Stable)-1.3.user.js) |
+| v1.2 | [Zainstaluj](https://raw.githubusercontent.com/arielkuzminski/glofox-autokaucja/master/Glofox%20Cart%20-%20Auto%20Kaucja%20Plastik%20(Stable)-1.2.user.js) |
+| v1.1 | [Zainstaluj](https://raw.githubusercontent.com/arielkuzminski/glofox-autokaucja/master/Glofox%20Cart%20-%20Auto%20Kaucja%20Plastik%20(Stable)-1.1.user.js) |
+| v1.0 | [Zainstaluj](https://raw.githubusercontent.com/arielkuzminski/glofox-autokaucja/master/Glofox%20Cart%20-%20Auto%20Kaucja%20Plastik%20(Stable)-1.0.user.js) |
+
+## Automatyczne aktualizacje
+
+Skrypt zawiera `@updateURL` i `@downloadURL` — Tampermonkey sprawdza aktualizacje automatycznie. Workflow:
+
+```bash
+# edytujesz plik, zmieniasz @version, a potem:
+git add . && git commit -m "update" && git push
+# Tampermonkey wykryje nową wersję i zaproponuje aktualizację
+```
 
 ## Użycie
 
